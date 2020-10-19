@@ -16,10 +16,10 @@
 # under the License.
 
 # if((USE_DNNL_CODEGEN STREQUAL "ON") OR (USE_DNNL_CODEGEN STREQUAL "JSON"))
-  file(GLOB DNNL_RELAY_CONTRIB_SRC src/relay/backend/contrib/verilator/*.cc)
+  file(GLOB DNNL_RELAY_CONTRIB_SRC src/relay/backend/contrib/verilator/codegen.cc)
   list(APPEND COMPILER_SRCS ${DNNL_RELAY_CONTRIB_SRC})
   list(APPEND COMPILER_SRCS ${JSON_RELAY_CONTRIB_SRC})
-  # file(GLOB DNNL_CONTRIB_SRC src/runtime/contrib/dnnl/dnnl_json_runtime.cc)
-  # list(APPEND RUNTIME_SRCS ${DNNL_CONTRIB_SRC})
+  file(GLOB DNNL_CONTRIB_SRC src/runtime/contrib/verilator/verilator_runtime.cc)
+  list(APPEND RUNTIME_SRCS ${DNNL_CONTRIB_SRC})
 # endif()
 

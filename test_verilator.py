@@ -72,6 +72,7 @@ def run_add(exe, shape, dtype):
 
 def partition(mod, backend):
     mod = transform.AnnotateTarget([backend])(mod)
+    print(mod)
     mod = transform.PartitionGraph()(mod)
     return mod
 

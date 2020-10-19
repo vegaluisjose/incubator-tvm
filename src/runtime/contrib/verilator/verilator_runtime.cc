@@ -79,7 +79,14 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
 
   void Add(const size_t& nid) {
     auto node = nodes_[nid];
-    std::cout << "we got here, WCGW" << std::endl;
+    auto data_entry = node.GetInputs()[0];
+    auto weight_entry = node.GetInputs()[0];
+    auto data_shape = nodes_[data_entry.id_].GetOpShape()[data_entry.index_];
+    auto weight_shape = nodes_[weight_entry.id_].GetOpShape()[weight_entry.index_];
+    std::cout << "data_shape[0]: " << data_shape[0] << std::endl;
+    std::cout << "data_shape[1]: " << data_shape[1] << std::endl;
+    std::cout << "weight_shape[0]: " << weight_shape[0] << std::endl;
+    std::cout << "weight_shape[1]: " << weight_shape[1] << std::endl;
   }
 };
 

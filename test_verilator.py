@@ -11,6 +11,17 @@ from tvm import runtime
 from tvm.relay import transform
 
 
+def _register_external_op_helper(op_name, supported=True):
+    @tvm.ir.register_op_attr(op_name, "target.verilator")
+    def _func_wrapper(attrs, args):
+        return supported
+
+    return _func_wrapper
+
+
+_register_external_op_helper("add")
+
+
 def run(exe, inputs):
     ctx = tvm.cpu()
     vm = runtime.vm.VirtualMachine(exe, ctx)

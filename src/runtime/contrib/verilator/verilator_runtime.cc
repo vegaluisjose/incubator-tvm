@@ -57,7 +57,16 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
     SetupConstants(consts);
   }
 
-  void Run() override { std::cout << "We are running" << std::endl; }
+  void Run() override {
+    for (size_t i = 0; i < input_nodes_.size(); ++i) {
+      auto nid = input_nodes_[i];
+      uint32_t eid = EntryID(nid, 0);
+      if (nodes_[nid].GetOpType() == "input") {
+        int* data = static_cast<int*>(data_entry_[eid]->data);
+        std::cout << data[0] << std::endl;
+      }
+    }
+  }
 
  private:
   // Build up the engine based on the input graph.
@@ -78,15 +87,7 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
   }
 
   void Add(const size_t& nid) {
-    auto node = nodes_[nid];
-    auto data_entry = node.GetInputs()[0];
-    auto weight_entry = node.GetInputs()[0];
-    auto data_shape = nodes_[data_entry.id_].GetOpShape()[data_entry.index_];
-    auto weight_shape = nodes_[weight_entry.id_].GetOpShape()[weight_entry.index_];
-    std::cout << "data_shape[0]: " << data_shape[0] << std::endl;
-    std::cout << "data_shape[1]: " << data_shape[1] << std::endl;
-    std::cout << "weight_shape[0]: " << weight_shape[0] << std::endl;
-    std::cout << "weight_shape[1]: " << weight_shape[1] << std::endl;
+    std::cout << "Running Add" << std::endl;
   }
 };
 

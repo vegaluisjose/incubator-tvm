@@ -66,6 +66,8 @@ def run_add(exe, shape, dtype):
     y_data = np.random.randint(5, size=shape, dtype=dtype)
     ref = x_data + y_data
     inputs = {"x": x_data, "y": y_data}
+    print("x:\n", x_data)
+    print("y:\n", y_data)
     out = run(exe, inputs)
     # tvm.testing.assert_allclose(out.asnumpy(), ref, rtol=1e-5, atol=1e-5)
 

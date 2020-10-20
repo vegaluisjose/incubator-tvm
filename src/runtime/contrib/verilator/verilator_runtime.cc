@@ -39,6 +39,15 @@ namespace contrib {
 using namespace tvm::runtime;
 using namespace tvm::runtime::json;
 
+void verilator_bias_add(int* a, int* b, int* out, int out_dim, int in_dim) {
+  for (int64_t i = 0; i < out_dim; ++i) {
+    for (int64_t j = 0; j < in_dim; ++j) {
+      int64_t k = i * in_dim + j;
+      out[k] = a[k] + b[j];
+    }
+  }
+}
+
 class VerilatorJSONRuntime : public JSONRuntimeBase {
  public:
   VerilatorJSONRuntime(const std::string& symbol_name, const std::string& graph_json,
@@ -58,27 +67,27 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
   }
 
   void Run() override {
+    std::vector<int*> in_ptr;
+    std::vector<int*> out_ptr;
     for (size_t i = 0; i < input_nodes_.size(); ++i) {
-      auto nid = input_nodes_[i];
-      uint32_t eid = EntryID(nid, 0);
-      if (nodes_[nid].GetOpType() == "input") {
-        int* data = static_cast<int*>(data_entry_[eid]->data);
-        std::cout << data[0] << std::endl;
-      }
+      uint32_t eid = EntryID(input_nodes_[i], 0);
+      int* data = static_cast<int*>(data_entry_[eid]->data);
+      in_ptr.push_back(data);
     }
-  }
-
- private:
-  // Build up the engine based on the input graph.
-  void BuildEngine() {
-    // Build subgraph engine.
+    for (size_t i = 0; i < outputs_.size(); ++i) {
+      uint32_t eid = EntryID(outputs_[i]);
+      int* data = static_cast<int*>(data_entry_[eid]->data);
+      out_ptr.push_back(data);
+    }
     for (size_t nid = 0; nid < nodes_.size(); ++nid) {
       const auto& node = nodes_[nid];
       if (node.GetOpType() == "kernel") {
         CHECK_EQ(node.GetOpType(), "kernel");
         auto op_name = node.GetOpName();
         if ("add" == op_name) {
-          Add(nid);
+          auto entry = node.GetInputs()[0];
+          auto shape = nodes_[entry.id_].GetOpShape()[entry.index_];
+          verilator_bias_add(in_ptr[0], in_ptr[1], out_ptr[0], shape[0], shape[1]);
         } else {
           LOG(FATAL) << "Unsupported op: " << op_name;
         }
@@ -86,9 +95,8 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
     }
   }
 
-  void Add(const size_t& nid) {
-    std::cout << "Running Add" << std::endl;
-  }
+ private:
+  void BuildEngine() {}
 };
 
 runtime::Module VerilatorJSONRuntimeCreate(String symbol_name, String graph_json,

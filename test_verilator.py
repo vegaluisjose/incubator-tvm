@@ -69,7 +69,7 @@ def run_add(exe, shape, dtype):
     print("x:\n", x_data)
     print("y:\n", y_data)
     out = run(exe, inputs)
-    # tvm.testing.assert_allclose(out.asnumpy(), ref, rtol=1e-5, atol=1e-5)
+    tvm.testing.assert_allclose(out.asnumpy(), ref, rtol=1e-5, atol=1e-5)
 
 
 def partition(mod, backend):

@@ -66,15 +66,12 @@ def run_add(exe, shape, dtype):
     y_data = np.random.randint(5, size=shape, dtype=dtype)
     ref = x_data + y_data
     inputs = {"x": x_data, "y": y_data}
-    print("x:\n", x_data)
-    print("y:\n", y_data)
     out = run(exe, inputs)
     tvm.testing.assert_allclose(out.asnumpy(), ref, rtol=1e-5, atol=1e-5)
 
 
 def partition(mod, backend):
     mod = transform.AnnotateTarget([backend])(mod)
-    print(mod)
     mod = transform.PartitionGraph()(mod)
     return mod
 
@@ -83,9 +80,7 @@ def test_add(backend):
     dtype = "int32"
     shape = (8, 8)
     mod = build_add_program(shape, dtype)
-    print(mod)
     mod = partition(mod, backend)
-    print(mod)
     exe = compile_prog(mod)
     run_add(exe, shape, dtype)
 

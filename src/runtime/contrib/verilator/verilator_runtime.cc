@@ -31,6 +31,7 @@
 
 #include "../json/json_node.h"
 #include "../json/json_runtime.h"
+#include "verilator_kernel.h"
 
 namespace tvm {
 namespace runtime {
@@ -38,15 +39,6 @@ namespace contrib {
 
 using namespace tvm::runtime;
 using namespace tvm::runtime::json;
-
-void verilator_bias_add(int* a, int* b, int* out, int out_dim, int in_dim) {
-  for (int64_t i = 0; i < out_dim; ++i) {
-    for (int64_t j = 0; j < in_dim; ++j) {
-      int64_t k = i * in_dim + j;
-      out[k] = a[k] + b[k];
-    }
-  }
-}
 
 class VerilatorJSONRuntime : public JSONRuntimeBase {
  public:
@@ -87,7 +79,7 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
         if ("add" == op_name) {
           auto entry = node.GetInputs()[0];
           auto shape = nodes_[entry.id_].GetOpShape()[entry.index_];
-          verilator_bias_add(in_ptr[0], in_ptr[1], out_ptr[0], shape[0], shape[1]);
+          verilator_add(device_, in_ptr[0], in_ptr[1], out_ptr[0], shape[0], shape[1]);
         } else {
           LOG(FATAL) << "Unsupported op: " << op_name;
         }
@@ -96,7 +88,12 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
   }
 
  private:
-  void BuildEngine() {}
+  void BuildEngine() {
+    // device_ = VerilatorAlloc();
+  }
+
+  /* The verilator handle. */
+  VerilatorHandle device_{nullptr};
 };
 
 runtime::Module VerilatorJSONRuntimeCreate(String symbol_name, String graph_json,

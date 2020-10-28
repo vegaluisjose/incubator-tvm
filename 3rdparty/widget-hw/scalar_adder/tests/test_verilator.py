@@ -30,7 +30,9 @@ def run(exe, inputs):
 
 def update_lib(lib):
     test_dir = os.path.dirname(os.path.realpath(os.path.expanduser(__file__)))
-    contrib_path = os.path.join(test_dir, "..", "src", "runtime", "contrib")
+    contrib_path = os.path.join(
+        test_dir, "..", "..", "..", "..", "src", "runtime", "contrib"
+    )
 
     kwargs = {}
     kwargs["options"] = ["-O2", "-std=c++14", "-I" + contrib_path]
@@ -43,15 +45,15 @@ def update_lib(lib):
     return lib
 
 
-def compile_prog(mod, params=None):
+def compile_prog(mod):
     with relay.build_config(opt_level=3):
-        exe = relay.vm.compile(mod, target="llvm", params=params)
+        exe = relay.vm.compile(mod, target="llvm", params=None)
         code, lib = exe.save()
         lib = update_lib(lib)
         return runtime.vm.Executable.load_exec(code, lib)
 
 
-def build_add_program(shape, dtype):
+def build_prog(shape, dtype):
     x = relay.var("x", shape=shape, dtype=dtype)
     y = relay.var("y", shape=shape, dtype=dtype)
     z = relay.add(x, y)
@@ -61,7 +63,7 @@ def build_add_program(shape, dtype):
     return mod
 
 
-def run_add(exe, shape, dtype):
+def run_prog(exe, shape, dtype):
     x_data = np.random.randint(5, size=shape, dtype=dtype)
     y_data = np.random.randint(5, size=shape, dtype=dtype)
     ref = x_data + y_data
@@ -70,7 +72,7 @@ def run_add(exe, shape, dtype):
     tvm.testing.assert_allclose(out.asnumpy(), ref, rtol=1e-5, atol=1e-5)
 
 
-def partition(mod, backend):
+def partition_prog(mod, backend):
     mod = transform.AnnotateTarget([backend])(mod)
     mod = transform.PartitionGraph()(mod)
     return mod
@@ -78,11 +80,11 @@ def partition(mod, backend):
 
 def test_add(backend):
     dtype = "int32"
-    shape = (8, 8)
-    mod = build_add_program(shape, dtype)
-    mod = partition(mod, backend)
+    shape = (8, 4)
+    mod = build_prog(shape, dtype)
+    mod = partition_prog(mod, backend)
     exe = compile_prog(mod)
-    run_add(exe, shape, dtype)
+    run_prog(exe, shape, dtype)
 
 
 if __name__ == "__main__":

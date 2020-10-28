@@ -16,10 +16,12 @@
 # under the License.
 
 # if((USE_DNNL_CODEGEN STREQUAL "ON") OR (USE_DNNL_CODEGEN STREQUAL "JSON"))
-  file(GLOB DNNL_RELAY_CONTRIB_SRC src/relay/backend/contrib/verilator/codegen.cc)
-  list(APPEND COMPILER_SRCS ${DNNL_RELAY_CONTRIB_SRC})
+  file(GLOB VERILATOR_RELAY_CONTRIB_SRC src/relay/backend/contrib/verilator/codegen.cc)
+  list(APPEND COMPILER_SRCS ${VERILATOR_RELAY_CONTRIB_SRC})
   list(APPEND COMPILER_SRCS ${JSON_RELAY_CONTRIB_SRC})
-  file(GLOB DNNL_CONTRIB_SRC src/runtime/contrib/verilator/verilator_runtime.cc)
-  list(APPEND RUNTIME_SRCS ${DNNL_CONTRIB_SRC})
+  find_library(EXTERN_LIBRARY_VERILATOR NAMES verilator PATHS ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/widget-hw)
+  list(APPEND TVM_RUNTIME_LINKER_LIBS ${EXTERN_LIBRARY_VERILATOR})
+  file(GLOB VERILATOR_CONTRIB_SRC src/runtime/contrib/verilator/verilator_runtime.cc)
+  list(APPEND RUNTIME_SRCS ${VERILATOR_CONTRIB_SRC})
 # endif()
 

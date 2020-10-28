@@ -6,5 +6,5 @@ libverilator.so:
 	-I$(TVM_DIR)/include \
 	-I$(TVM_DIR)/3rdparty/dlpack/include \
 	-shared -fPIC \
-	$(SRC_DIR)/*.cc \
-	-o $@	
+	$(SRC_DIR)/kernel_ref.cc \
+	-o $@

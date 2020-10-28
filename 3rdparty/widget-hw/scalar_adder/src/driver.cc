@@ -1,6 +1,10 @@
 #include "Top.h"
 #include "verilator_device.h"
 
+namespace tvm {
+namespace runtime {
+namespace contrib {
+
 vluint64_t main_time = 0;
 
 double sc_time_stamp() { return main_time; }
@@ -65,3 +69,7 @@ void VerilatorRun(VerilatorHandle handle, int n) {
     main_time++;
   }
 }
+
+}  // namespace contrib
+}  // namespace runtime
+}  // namespace tvm

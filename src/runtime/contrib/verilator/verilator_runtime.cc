@@ -31,6 +31,8 @@
 
 #include "../json/json_node.h"
 #include "../json/json_runtime.h"
+
+#include "verilator_device.h"
 #include "verilator_kernel.h"
 
 namespace tvm {

@@ -25,6 +25,8 @@
 #ifndef TVM_RUNTIME_CONTRIB_VERILATOR_VERILATOR_DEVICE_H_
 #define TVM_RUNTIME_CONTRIB_VERILATOR_VERILATOR_DEVICE_H_
 
+#include <tvm/runtime/c_runtime_api.h>
+
 namespace tvm {
 namespace runtime {
 namespace contrib {
@@ -32,22 +34,22 @@ namespace contrib {
 typedef void* VerilatorHandle;
 
 /* allocate Verilator object */
-VerilatorHandle VerilatorAlloc();
+extern "C" TVM_DLL VerilatorHandle VerilatorAlloc();
 
 /* deallocate Verilator object */
-void VerilatorDealloc(VerilatorHandle handle);
+extern "C" TVM_DLL void VerilatorDealloc(VerilatorHandle handle);
 
 /* read Verilator register or memory */
-int VerilatorRead(VerilatorHandle handle, int id, int addr);
+extern "C" TVM_DLL int VerilatorRead(VerilatorHandle handle, int id, int addr);
 
 /* write Verilator register or memory */
-void VerilatorWrite(VerilatorHandle handle, int id, int addr, int value);
+extern "C" TVM_DLL void VerilatorWrite(VerilatorHandle handle, int id, int addr, int value);
 
 /* reset Verilator for n clock cycles */
-void VerilatorReset(VerilatorHandle handle, int n);
+extern "C" TVM_DLL void VerilatorReset(VerilatorHandle handle, int n);
 
 /* run Verilator for n clock cycles */
-void VerilatorRun(VerilatorHandle handle, int n);
+extern "C" TVM_DLL void VerilatorRun(VerilatorHandle handle, int n);
 
 }  // namespace contrib
 }  // namespace runtime

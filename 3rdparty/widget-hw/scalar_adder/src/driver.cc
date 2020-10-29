@@ -1,22 +1,21 @@
 #include "Top.h"
 #include "verilator_device.h"
 
+vluint64_t main_time = 0;
+double sc_time_stamp() { return main_time; }
+
 namespace tvm {
 namespace runtime {
 namespace contrib {
 
-vluint64_t main_time = 0;
-
-double sc_time_stamp() { return main_time; }
-
-VerilatorHandle VerilatorAlloc() {
+extern "C" VerilatorHandle VerilatorAlloc() {
   Top *top = new Top;
   return static_cast<VerilatorHandle>(top);
 }
 
-void VerilatorDealloc(VerilatorHandle handle) { delete static_cast<Top *>(handle); }
+extern "C" void VerilatorDealloc(VerilatorHandle handle) { delete static_cast<Top *>(handle); }
 
-int VerilatorRead(VerilatorHandle handle, int id, int addr) {
+extern "C" int VerilatorRead(VerilatorHandle handle, int id, int addr) {
   Top *top = static_cast<Top *>(handle);
   top->opcode = 2;
   top->id = id;
@@ -25,7 +24,7 @@ int VerilatorRead(VerilatorHandle handle, int id, int addr) {
   return top->out;
 }
 
-void VerilatorWrite(VerilatorHandle handle, int id, int addr, int value) {
+extern "C" void VerilatorWrite(VerilatorHandle handle, int id, int addr, int value) {
   Top *top = static_cast<Top *>(handle);
   top->opcode = 1;
   top->id = id;
@@ -34,7 +33,7 @@ void VerilatorWrite(VerilatorHandle handle, int id, int addr, int value) {
   top->eval();
 }
 
-void VerilatorReset(VerilatorHandle handle, int n) {
+extern "C" void VerilatorReset(VerilatorHandle handle, int n) {
   Top *top = static_cast<Top *>(handle);
   top->clock = 0;
   top->reset = 1;
@@ -53,7 +52,7 @@ void VerilatorReset(VerilatorHandle handle, int n) {
   top->reset = 0;
 }
 
-void VerilatorRun(VerilatorHandle handle, int n) {
+extern "C" void VerilatorRun(VerilatorHandle handle, int n) {
   Top *top = static_cast<Top *>(handle);
   top->clock = 0;
   main_time = 0;

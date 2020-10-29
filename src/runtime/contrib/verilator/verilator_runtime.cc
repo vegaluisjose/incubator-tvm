@@ -91,7 +91,7 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
 
  private:
   void BuildEngine() {
-    // device_ = VerilatorAlloc();
+    device_ = VerilatorAlloc();
   }
 
   /* The verilator handle. */

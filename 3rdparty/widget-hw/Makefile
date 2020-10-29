@@ -1,10 +1,5 @@
-TVM_DIR = $(abspath ../..)
-SRC_DIR = $(abspath .)/scalar_adder/src
+default: scalar_adder
 
-libverilator.so:
-	g++ -I$(TVM_DIR)/src/runtime/contrib/verilator \
-	-I$(TVM_DIR)/include \
-	-I$(TVM_DIR)/3rdparty/dlpack/include \
-	-shared -fPIC \
-	$(SRC_DIR)/kernel_ref.cc \
-	-o $@
+.PHONY:scalar_adder
+scalar_adder:
+	make -C scalar_adder

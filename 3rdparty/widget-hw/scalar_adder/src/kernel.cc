@@ -8,7 +8,6 @@ namespace runtime {
 namespace contrib {
 
 extern "C" void verilator_add(VerilatorHandle handle, int *a, int *b, int *y, int h, int w) {
-  VerilatorReset(handle, 1);
   for (int64_t i = 0; i < h; ++i) {
     for (int64_t j = 0; j < w; ++j) {
       int64_t k = i * w + j;

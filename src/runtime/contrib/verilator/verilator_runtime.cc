@@ -92,6 +92,8 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
  private:
   void BuildEngine() {
     device_ = VerilatorAlloc();
+    // reset for 10 cycles
+    VerilatorReset(device_, 10);
   }
 
   /* The verilator handle. */

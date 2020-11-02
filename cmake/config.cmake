@@ -238,6 +238,9 @@ set(USE_ANTLR OFF)
 # Whether use Relay debug mode
 set(USE_RELAY_DEBUG OFF)
 
+# Build Verilator codegen and runtime, example located in 3rdparty/widget-hw
+set(USE_VERILATOR_HW OFF)
+
 # Whether to build fast VTA simulator driver
 set(USE_VTA_FSIM OFF)
 

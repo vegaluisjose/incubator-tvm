@@ -66,10 +66,12 @@ def offload(mod):
     return mod
 
 
-def compile_module(mod):
-    """Compile Relay module"""
+def compile_module(mod, lib):
+    """Compile Relay module and set Verilator library"""
 
-    with relay.build_config(opt_level=3):
+    with tvm.transform.PassContext(
+        opt_level=3, config={"relay.ext.verilator.options": {"lib": lib}}
+    ):
         exe = relay.vm.compile(mod, target="llvm", params=None)
         code, lib = exe.save()
         return runtime.vm.Executable.load_exec(code, lib)

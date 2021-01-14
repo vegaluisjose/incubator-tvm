@@ -42,6 +42,8 @@ namespace runtime {
 namespace contrib {
 
 typedef VerilatorHandle (*VerilatorAllocFunc)();
+typedef void (*VerilatorResetFunc)(VerilatorHandle, int);
+typedef void (*VerilatorAddFunc)(VerilatorHandle, int*, int*, int*, int, int);
 
 using namespace tvm::runtime;
 using namespace tvm::runtime::json;
@@ -81,16 +83,25 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
 
   const char* type_key() const { return "verilator_json"; }
 
-  void LoadDevice(const std::string& lib_name) {
-    auto n = make_object<VerilatorLibrary>();
-    n->Init(lib_name);
-    auto alloc_func = reinterpret_cast<VerilatorAllocFunc>(n->GetSymbol("VerilatorAlloc"));
-    device_ = (*alloc_func)();
+  void LoadLibrary(const std::string& lib_name) {
+    lib_ = new VerilatorLibrary();
+    lib_->Init(lib_name);
   }
 
   void Init(const Array<NDArray>& consts) override {
+    // get symbols
+    auto alloc_func = reinterpret_cast<VerilatorAllocFunc>(lib_->GetSymbol("VerilatorAlloc"));
+    ICHECK(alloc_func != nullptr);
+    auto reset_func = reinterpret_cast<VerilatorResetFunc>(lib_->GetSymbol("VerilatorReset"));
+    ICHECK(reset_func != nullptr);
+    vadd_func_ = reinterpret_cast<VerilatorAddFunc>(lib_->GetSymbol("verilator_add"));
+    ICHECK(vadd_func_ != nullptr);
+
+    // alloc device
+    device_ = (*alloc_func)();
+
     // reset for 10 cycles
-    VerilatorReset(device_, 10);
+    (*reset_func)(device_, 10);
 
     CHECK_EQ(consts.size(), const_idx_.size())
         << "The number of input constants must match the number of required.";
@@ -120,7 +131,7 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
         if ("add" == op_name) {
           auto entry = node.GetInputs()[0];
           auto shape = nodes_[entry.id_].GetOpShape()[entry.index_];
-          verilator_add(device_, in_ptr[0], in_ptr[1], out_ptr[0], shape[0], shape[1]);
+          (*vadd_func_)(device_, in_ptr[0], in_ptr[1], out_ptr[0], shape[0], shape[1]);
         } else {
           LOG(FATAL) << "Unsupported op: " << op_name;
         }
@@ -133,12 +144,14 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
   VerilatorHandle device_{nullptr};
   /* The verilator library handle. */
   VerilatorLibrary* lib_{nullptr};
+  /* The verilator add function handle */
+  VerilatorAddFunc vadd_func_{nullptr};
 };
 
 runtime::Module VerilatorJSONRuntimeCreate(String lib_name, String symbol_name, String graph_json,
                                            const Array<String>& const_names) {
   auto n = make_object<VerilatorJSONRuntime>(symbol_name, graph_json, const_names);
-  n->LoadDevice(lib_name);
+  n->LoadLibrary(lib_name);
   return runtime::Module(n);
 }
 

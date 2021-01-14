@@ -25,6 +25,7 @@ from tvm import relay
 from test_verilator.infrastructure import (
     _register_verilator_op,
     skip_test,
+    compile_hardware,
     compile_module,
     run_module,
     offload,
@@ -60,12 +61,7 @@ def test_add():
     shape = (8, 4)
     mod = create_module_add(shape, dtype)
     mod = offload(mod)
-    exe = compile_module(
-        mod,
-        os.path.join(
-            "/home/vega/github/incubator-tvm/3rdparty/vta-hw/apps/verilator/libverilator.so"
-        ),
-    )
+    exe = compile_module(mod)
     run_check_add(exe, shape, dtype)
 
 

@@ -37,11 +37,11 @@
 #include "verilator_device.h"
 #include "verilator_kernel.h"
 
-typedef void (*DummyFunc)();
-
 namespace tvm {
 namespace runtime {
 namespace contrib {
+
+typedef VerilatorHandle (*VerilatorAllocFunc)();
 
 using namespace tvm::runtime;
 using namespace tvm::runtime::json;
@@ -75,22 +75,22 @@ class VerilatorLibrary : public Library {
 
 class VerilatorJSONRuntime : public JSONRuntimeBase {
  public:
-  VerilatorJSONRuntime(const std::string& symbol_name,
-                       const std::string& graph_json, const Array<String> const_names)
+  VerilatorJSONRuntime(const std::string& symbol_name, const std::string& graph_json,
+                       const Array<String> const_names)
       : JSONRuntimeBase(symbol_name, graph_json, const_names) {}
 
   const char* type_key() const { return "verilator_json"; }
 
-  void LoadLib(const std::string& lib_name) {
-    std::cout << "deeeebug: " << lib_name << std::endl;
+  void LoadDevice(const std::string& lib_name) {
     auto n = make_object<VerilatorLibrary>();
     n->Init(lib_name);
-    auto f* = reinterpret_cast<DummyFunc>(n->GetSymbol("Dummy"));
-    (*f)();
+    auto alloc_func = reinterpret_cast<VerilatorAllocFunc>(n->GetSymbol("VerilatorAlloc"));
+    device_ = (*alloc_func)();
   }
 
   void Init(const Array<NDArray>& consts) override {
-    BuildEngine();
+    // reset for 10 cycles
+    VerilatorReset(device_, 10);
 
     CHECK_EQ(consts.size(), const_idx_.size())
         << "The number of input constants must match the number of required.";
@@ -129,21 +129,16 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
   }
 
  private:
-  void BuildEngine() {
-    device_ = VerilatorAlloc();
-    // reset for 10 cycles
-    VerilatorReset(device_, 10);
-  }
-
-  /* The verilator handle. */
+  /* The verilator device handle. */
   VerilatorHandle device_{nullptr};
-
+  /* The verilator library handle. */
+  VerilatorLibrary* lib_{nullptr};
 };
 
-runtime::Module VerilatorJSONRuntimeCreate(String lib_name, String symbol_name,
-                                           String graph_json, const Array<String>& const_names) {
+runtime::Module VerilatorJSONRuntimeCreate(String lib_name, String symbol_name, String graph_json,
+                                           const Array<String>& const_names) {
   auto n = make_object<VerilatorJSONRuntime>(symbol_name, graph_json, const_names);
-  n->LoadLib(lib_name);
+  n->LoadDevice(lib_name);
   return runtime::Module(n);
 }
 

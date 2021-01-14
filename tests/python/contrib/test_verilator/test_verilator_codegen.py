@@ -60,7 +60,12 @@ def test_add():
     shape = (8, 4)
     mod = create_module_add(shape, dtype)
     mod = offload(mod)
-    exe = compile_module(mod, os.path.join("/home/vega/github/temp_so/lib.so"))
+    exe = compile_module(
+        mod,
+        os.path.join(
+            "/home/vega/github/incubator-tvm/3rdparty/vta-hw/apps/verilator/libverilator.so"
+        ),
+    )
     run_check_add(exe, shape, dtype)
 
 

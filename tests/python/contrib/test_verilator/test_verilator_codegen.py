@@ -16,6 +16,7 @@
 # under the License.
 """Verilator codegen tests"""
 
+import os
 import numpy as np
 
 import tvm
@@ -59,7 +60,7 @@ def test_add():
     shape = (8, 4)
     mod = create_module_add(shape, dtype)
     mod = offload(mod)
-    exe = compile_module(mod, "test.so")
+    exe = compile_module(mod, os.path.join("/home/vega/github/temp_so/lib.so"))
     run_check_add(exe, shape, dtype)
 
 

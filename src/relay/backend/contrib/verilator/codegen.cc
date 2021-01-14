@@ -113,11 +113,11 @@ runtime::Module VerilatorCompiler(const ObjectRef& ref) {
     cfg = AttrsWithDefaultValues<VerilatorCompilerConfig>();
   }
 
-  std::cout << "Deeeeebug: " << cfg.value()->lib << std::endl;
+  auto lib_name = cfg.value()->lib;
 
   const auto* pf = runtime::Registry::Get("runtime.VerilatorJSONRuntimeCreate");
   CHECK(pf != nullptr) << "Cannot find JSON runtime module to create";
-  auto mod = (*pf)(func_name, graph_json, params);
+  auto mod = (*pf)(lib_name, func_name, graph_json, params);
   return mod;
 }
 

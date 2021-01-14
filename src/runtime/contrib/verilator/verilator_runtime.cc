@@ -29,10 +29,15 @@
 #include <string>
 #include <vector>
 
+#include <dlfcn.h>
+
+#include "../../library_module.h"
 #include "../json/json_node.h"
 #include "../json/json_runtime.h"
 #include "verilator_device.h"
 #include "verilator_kernel.h"
+
+typedef void (*DummyFunc)();
 
 namespace tvm {
 namespace runtime {
@@ -41,13 +46,48 @@ namespace contrib {
 using namespace tvm::runtime;
 using namespace tvm::runtime::json;
 
+class VerilatorLibrary : public Library {
+ public:
+  ~VerilatorLibrary() {
+    if (lib_handle_) Unload();
+  }
+  void Init(const std::string& name) { Load(name); }
+
+  void* GetSymbol(const char* name) final { return GetSymbol_(name); }
+
+ private:
+  // Library handle
+  void* lib_handle_{nullptr};
+  // load the library
+  void Load(const std::string& name) {
+    lib_handle_ = dlopen(name.c_str(), RTLD_LAZY | RTLD_LOCAL);
+    ICHECK(lib_handle_ != nullptr)
+        << "Failed to load dynamic shared library " << name << " " << dlerror();
+  }
+
+  void* GetSymbol_(const char* name) { return dlsym(lib_handle_, name); }
+
+  void Unload() {
+    dlclose(lib_handle_);
+    lib_handle_ = nullptr;
+  }
+};
+
 class VerilatorJSONRuntime : public JSONRuntimeBase {
  public:
-  VerilatorJSONRuntime(const std::string& symbol_name, const std::string& graph_json,
-                       const Array<String> const_names)
+  VerilatorJSONRuntime(const std::string& symbol_name,
+                       const std::string& graph_json, const Array<String> const_names)
       : JSONRuntimeBase(symbol_name, graph_json, const_names) {}
 
   const char* type_key() const { return "verilator_json"; }
+
+  void LoadLib(const std::string& lib_name) {
+    std::cout << "deeeebug: " << lib_name << std::endl;
+    auto n = make_object<VerilatorLibrary>();
+    n->Init(lib_name);
+    auto f* = reinterpret_cast<DummyFunc>(n->GetSymbol("Dummy"));
+    (*f)();
+  }
 
   void Init(const Array<NDArray>& consts) override {
     BuildEngine();
@@ -97,11 +137,13 @@ class VerilatorJSONRuntime : public JSONRuntimeBase {
 
   /* The verilator handle. */
   VerilatorHandle device_{nullptr};
+
 };
 
-runtime::Module VerilatorJSONRuntimeCreate(String symbol_name, String graph_json,
-                                           const Array<String>& const_names) {
+runtime::Module VerilatorJSONRuntimeCreate(String lib_name, String symbol_name,
+                                           String graph_json, const Array<String>& const_names) {
   auto n = make_object<VerilatorJSONRuntime>(symbol_name, graph_json, const_names);
+  n->LoadLib(lib_name);
   return runtime::Module(n);
 }
 

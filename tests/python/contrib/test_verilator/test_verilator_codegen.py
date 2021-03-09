@@ -27,6 +27,8 @@ from test_verilator.infrastructure import (
     compile_module,
     run_module,
     offload,
+    clear_stats,
+    stats,
 )
 
 
@@ -48,20 +50,24 @@ def run_check_add(exe, shape, dtype):
     y_data = np.random.randint(5, size=shape, dtype=dtype)
     ref = x_data + y_data
     inputs = {"x": x_data, "y": y_data}
+    clear_stats()
     out = run_module(exe, inputs)
+    values = stats()
+    print("number of cycles:{}".format(values["cycle_counter"]))
     tvm.testing.assert_allclose(out.asnumpy(), ref, rtol=1e-5, atol=1e-5)
 
 
-def test_add():
+def tadd(lanes):
     if skip_test():
         return
     dtype = "int32"
     shape = (8, 4)
     mod = create_module_add(shape, dtype)
     mod = offload(mod)
-    exe = compile_module(mod)
+    exe = compile_module(mod, lanes)
     run_check_add(exe, shape, dtype)
 
 
-if __name__ == "__main__":
-    test_add()
+def test_add():
+    tadd(1)
+    tadd(2)

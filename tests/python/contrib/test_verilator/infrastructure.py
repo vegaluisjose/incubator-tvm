@@ -19,6 +19,7 @@
 import os
 import sys
 import subprocess as sp
+import json
 
 import tvm
 from tvm import relay
@@ -59,8 +60,22 @@ def skip_test():
     return False
 
 
+def clear_stats():
+    """Clear profiler statistics."""
+    f = tvm.get_global_func("verilator.profiler_clear", True)
+    if f:
+        f()
+
+
+def stats():
+    """Get profiler statistics."""
+
+    x = tvm.get_global_func("verilator.profiler_status")()
+    return json.loads(x)
+
+
 def offload(mod):
-    """Offload ops based on the registered ops"""
+    """Offload ops based on the registered ops."""
 
     backend = "verilator"
     mod = transform.AnnotateTarget([backend])(mod)
@@ -69,7 +84,7 @@ def offload(mod):
 
 
 def verilator_app_path():
-    """Find verilator hardware app path"""
+    """Find verilator hardware app path."""
 
     cur_dir = os.path.dirname(os.path.realpath(__file__))
     return os.path.join(
@@ -82,29 +97,61 @@ def verilator_app_path():
         "vta-hw",
         "apps",
         "verilator",
+        "add",
     )
 
 
-def compile_hardware():
-    """Compile hardware into shared library"""
+def compile_hardware(lib_name, lanes):
+    """Compile hardware into shared library
+
+    Paramters
+    ---------
+    name : Str
+        The name of the library.
+
+    lanes : Int
+        The number of vector lanes.
+    """
+
+    opt_lib_name = "LIB_NAME={}".format(lib_name)
+    opt_lanes = "LANES={}".format(lanes)
 
     cmd = []
     cmd.append("make")
     cmd.append("--directory")
     cmd.append(verilator_app_path())
+    cmd.append(opt_lib_name)
+    cmd.append(opt_lanes)
     sp.run(cmd, check=True)
 
 
-def compile_module(mod):
-    """Compile Relay module and hardware library"""
+def compile_module(mod, lanes):
+    """Compile Relay module and hardware library
 
-    lib = os.path.join(verilator_app_path(), "libverilator.so")
+    Paramters
+    ---------
+    mod : Module
+        The Relay Module.
+
+    lanes : Int
+        The number of vector lanes.
+    """
+
+    lib_name = "libverilator_{}".format(lanes)
+    lib_name_ext = "{}.so".format(lib_name)
+    lib = os.path.join(verilator_app_path(), lib_name_ext)
     if not os.path.isfile(lib):
-        compile_hardware()
+        compile_hardware(lib_name, lanes)
 
-    opts = {"lib_path": lib}
+    opts = {
+        "lib_path": lib,
+        "profiler_enable": True,
+        "profiler_cycle_counter_id": 0,
+    }
 
-    with tvm.transform.PassContext(opt_level=3, config={"relay.ext.verilator.options": opts}):
+    with tvm.transform.PassContext(
+        opt_level=3, config={"relay.ext.verilator.options": opts}
+    ):
         exe = relay.vm.compile(mod, target="llvm", params=None)
         code, lib = exe.save()
         return runtime.vm.Executable.load_exec(code, lib)

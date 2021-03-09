@@ -122,7 +122,7 @@ def compile_hardware(lib_name, lanes):
     cmd.append(verilator_app_path())
     cmd.append(opt_lib_name)
     cmd.append(opt_lanes)
-    sp.run(cmd, check=True)
+    sp.run(cmd, check=True, stdout=sp.DEVNULL)
 
 
 def compile_module(mod, lanes):

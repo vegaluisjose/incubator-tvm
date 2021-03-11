@@ -128,7 +128,7 @@ def check_result(res):
     labels = get_labels()
     predictions = np.squeeze(res)
     prediction = np.argmax(predictions)
-    # 387 is an elephant
+    # 387 is the elephant
     tvm.testing.assert_allclose(prediction, 387, rtol=1e-5, atol=1e-5)
 
 

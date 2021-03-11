@@ -136,7 +136,7 @@ void VerilatorRuntime::Run() {
       CHECK_EQ(node.GetOpType(), "kernel");
       auto op_name = node.GetOpName();
       auto entry = node.GetInputs()[0];
-      auto shape = nodes_[entry.id_].GetOpShape()[entry.index_];
+      auto shape = node.GetOpShape()[entry.index_];
       if ("add" == op_name) {
         auto add = reinterpret_cast<VerilatorAddFunc>(lib_->GetSymbol("verilator_add"));
         ICHECK(add != nullptr);
@@ -144,7 +144,7 @@ void VerilatorRuntime::Run() {
       } else if ("nn.bias_add" == op_name) {
         auto bias_add = reinterpret_cast<VerilatorBiasAddFunc>(lib_->GetSymbol("verilator_bias_add"));
         ICHECK(bias_add != nullptr);
-        bias_add(device_, in_ptr[0], in_ptr[1], out_ptr[0], shape[0], shape[1], shape[2], shape[3]);
+        bias_add(device_, in_ptr[0], in_ptr[1], out_ptr[0], shape[0], shape[3], shape[1], shape[2]);
       } else {
         LOG(FATAL) << "Unsupported op: " << op_name;
       }

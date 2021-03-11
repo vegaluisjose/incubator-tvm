@@ -99,17 +99,11 @@ def tbias(lanes):
     print_counter("nn.bias_add", lanes, cycles)
 
 
-def test_add_vector_1():
+def test_add():
     tadd(1)
-
-
-def test_add_vector_4():
     tadd(4)
 
 
-def test_bias_add_vector_1():
+def test_bias_add():
     tbias(1)
-
-
-def test_bias_add_vector_32():
     tbias(32)

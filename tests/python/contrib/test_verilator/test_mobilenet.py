@@ -29,6 +29,8 @@ from test_verilator.infrastructure import (
     compile_hardware,
     compiler_opts,
     offload,
+    clear_stats,
+    stats,
 )
 
 
@@ -130,6 +132,12 @@ def check_result(res):
     tvm.testing.assert_allclose(prediction, 387, rtol=1e-5, atol=1e-5)
 
 
+def print_counter(lanes, cycles):
+    print(
+        "[mobilenet] vector-lanes:{} number of cycles:{}".format(lanes, cycles)
+    )
+
+
 def tmobilenet(lanes):
     if skip_test():
         return
@@ -138,9 +146,13 @@ def tmobilenet(lanes):
     mod = offload(mod)
     lib = compile_hardware(lanes)
     opts = compiler_opts(lib)
+    clear_stats()
     res = run_model(mod, params, opts)
+    values = stats()
     check_result(res)
+    print_counter(lanes, values["cycle_counter"])
 
 
-def test_mobilenet_vector_1():
-    tmobilenet(1)
+def test_mobilenet():
+    tmobilenet(4)
+    tmobilenet(32)

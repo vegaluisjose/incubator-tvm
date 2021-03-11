@@ -22,17 +22,14 @@ import tvm
 from tvm import relay
 
 from test_verilator.infrastructure import (
-    _register_verilator_op,
     skip_test,
-    compile_module,
+    compile_hardware,
+    compiler_opts,
     run_module,
     offload,
     clear_stats,
     stats,
 )
-
-_register_verilator_op("add")
-_register_verilator_op("nn.bias_add")
 
 
 def create_module_add(shape, dtype):
@@ -55,13 +52,13 @@ def create_module_bias_add(xshape, yshape, dtype):
     return mod
 
 
-def run_and_check(exe, xshape, yshape, dtype):
+def run_and_check(xshape, yshape, dtype, mod, opts):
     x_data = np.random.randint(5, size=xshape, dtype=dtype)
     y_data = np.random.randint(5, size=yshape, dtype=dtype)
     ref = x_data + y_data
-    inputs = {"x": x_data, "y": y_data}
+    inp = {"x": x_data, "y": y_data}
     clear_stats()
-    out = run_module(exe, inputs)
+    out = run_module(inp, mod, params=None, opts=opts)
     values = stats()
     tvm.testing.assert_allclose(out.asnumpy(), ref, rtol=1e-5, atol=1e-5)
     return values["cycle_counter"]
@@ -82,8 +79,9 @@ def tadd(lanes):
     shape = (8, 4)
     mod = create_module_add(shape, dtype)
     mod = offload(mod)
-    exe = compile_module(mod, lanes)
-    cycles = run_and_check(exe, shape, shape, dtype)
+    lib = compile_hardware(lanes)
+    opts = compiler_opts(lib)
+    cycles = run_and_check(shape, shape, dtype, mod, opts)
     print_counter("add", lanes, cycles)
 
 
@@ -95,14 +93,23 @@ def tbias(lanes):
     yshape = (32,)
     mod = create_module_bias_add(xshape, yshape, dtype)
     mod = offload(mod)
-    exe = compile_module(mod, lanes)
-    cycles = run_and_check(exe, xshape, yshape, dtype)
+    lib = compile_hardware(lanes)
+    opts = compiler_opts(lib)
+    cycles = run_and_check(xshape, yshape, dtype, mod, opts)
     print_counter("nn.bias_add", lanes, cycles)
 
 
-def test_adds():
-    print("\nTesting multiple vector lanes on different operators...")
+def test_add_vector_1():
     tadd(1)
-    tadd(2)
+
+
+def test_add_vector_4():
+    tadd(4)
+
+
+def test_bias_add_vector_1():
     tbias(1)
+
+
+def test_bias_add_vector_32():
     tbias(32)

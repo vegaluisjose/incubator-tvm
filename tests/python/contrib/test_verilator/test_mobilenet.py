@@ -24,36 +24,12 @@ import os
 from PIL import Image
 import numpy as np
 
-def _register_verilator_op(op_name, supported=True):
-    """The helper function to indicate that a given operator can be supported by Verilator.
-
-    Paramters
-    ---------
-    op_name : Str
-        The name of operator that will be registered.
-
-    Returns
-    -------
-    f : callable
-        A function that returns if the operator is supported by DNNL.
-    """
-
-    @tvm.ir.register_op_attr(op_name, "target.verilator")
-    def _func_wrapper(expr):
-        return supported
-
-    return _func_wrapper
-
-
-_register_verilator_op("nn.bias_add")
-
-def offload(mod):
-    """Offload ops based on the registered ops."""
-
-    backend = "verilator"
-    mod = tvm.relay.transform.AnnotateTarget([backend])(mod)
-    mod = tvm.relay.transform.PartitionGraph()(mod)
-    return mod
+from test_verilator.infrastructure import (
+    skip_test,
+    compile_hardware,
+    compiler_opts,
+    offload,
+)
 
 
 def extract(path):
@@ -68,83 +44,103 @@ def extract(path):
         raise RuntimeError("Could not decompress the file: " + path)
 
 
-def get_mobilenet():
-    model_url = "https://storage.googleapis.com/download.tensorflow.org/models/mobilenet_v1_2018_08_02/mobilenet_v1_1.0_224_quant.tgz"
-    model_path = download_testdata(model_url, "mobilenet_v1_1.0_224_quant.tgz", module=["tf", "official"])
-    model_dir = os.path.dirname(model_path)
-    extract(model_path)
-    tflite_model_file = os.path.join(model_dir, "mobilenet_v1_1.0_224_quant.tflite")
-    tflite_model_buf = open(tflite_model_file, "rb").read()
-    try:
-        import tflite
-    
-        return tflite.Model.GetRootAsModel(tflite_model_buf, 0)
-    except AttributeError:
-        import tflite.Model
-    
-        return tflite.Model.Model.GetRootAsModel(tflite_model_buf, 0)
-
 def get_real_image(im_height, im_width):
-    repo_base = 'https://github.com/dmlc/web-data/raw/master/tensorflow/models/InceptionV1/'
-    img_name = 'elephant-299.jpg'
+    repo_base = "https://github.com/dmlc/web-data/raw/master/tensorflow/models/InceptionV1/"
+    img_name = "elephant-299.jpg"
     image_url = os.path.join(repo_base, img_name)
-    img_path = download_testdata(image_url, img_name, module='data')
+    img_path = download_testdata(image_url, img_name, module="data")
     image = Image.open(img_path).resize((im_height, im_width))
-    x = np.array(image).astype('uint8')
+    x = np.array(image).astype("uint8")
     data = np.reshape(x, (1, im_height, im_width, 3))
     return data
 
-# TFLite input tensor name, shape and type
-input_tensor = "input"
-input_shape = (1, 224, 224, 3)
-input_dtype = "uint8"
 
-tflite_model = get_mobilenet()
+def get_mobilenet_model():
+    model_url = "https://storage.googleapis.com/download.tensorflow.org/models/mobilenet_v1_2018_08_02/mobilenet_v1_1.0_224_quant.tgz"
+    model_path = download_testdata(
+        model_url, "mobilenet_v1_1.0_224_quant.tgz", module=["tf", "official"]
+    )
+    model_dir = os.path.dirname(model_path)
+    extract(model_path)
+    tflite_model_file = os.path.join(
+        model_dir, "mobilenet_v1_1.0_224_quant.tflite"
+    )
+    tflite_model_buf = open(tflite_model_file, "rb").read()
+    try:
+        import tflite
 
-mod, params = relay.frontend.from_tflite(
-    tflite_model, shape_dict={input_tensor: input_shape}, dtype_dict={input_tensor: input_dtype}
-)
+        return tflite.Model.GetRootAsModel(tflite_model_buf, 0)
+    except AttributeError:
+        import tflite.Model
 
-mod = offload(mod)
-
-opts = {
-    "lib_path": "/home/vega/github/tvm/3rdparty/vta-hw/apps/verilator/add/libverilator.so",
-    "profiler_enable": True,
-    "profiler_cycle_counter_id": 0,
-}
-
-# Build the module against to x86 CPU
-target = "llvm"
-with transform.PassContext(opt_level=3, config={"relay.ext.verilator.options": opts}):
-    lib = relay.build(mod, target, params=params)
+        return tflite.Model.Model.GetRootAsModel(tflite_model_buf, 0)
 
 
-module = runtime.GraphModule(lib["default"](tvm.cpu()))
-image_data = get_real_image(224, 224)
-module.set_input(input_tensor, image_data)
-module.run()
-tvm_output = module.get_output(0).asnumpy()
+def get_input_tensor_name():
+    return "input"
 
-label_file_url = "".join(
-    [
-        "https://raw.githubusercontent.com/",
-        "tensorflow/tensorflow/master/tensorflow/lite/java/demo/",
-        "app/src/main/assets/",
-        "labels_mobilenet_quant_v1_224.txt",
-    ]
-)
-label_file = "labels_mobilenet_quant_v1_224.txt"
-label_path = download_testdata(label_file_url, label_file, module="data")
 
-# List of 1001 classes
-with open(label_path) as f:
-    labels = f.readlines()
+def compile_model_to_relay(model):
+    input_tensor = get_input_tensor_name()
+    input_shape = (1, 224, 224, 3)
+    input_dtype = "uint8"
+    mod, params = relay.frontend.from_tflite(
+        model,
+        shape_dict={input_tensor: input_shape},
+        dtype_dict={input_tensor: input_dtype},
+    )
+    return mod, params
 
-# Convert result to 1D data
-predictions = np.squeeze(tvm_output)
 
-# Get top 1 prediction
-prediction = np.argmax(predictions)
+def run_model(mod, params=None, opts=None):
+    with transform.PassContext(
+        opt_level=3, config={"relay.ext.verilator.options": opts}
+    ):
+        lib = relay.build(mod, target="llvm", params=params)
+    module = runtime.GraphModule(lib["default"](tvm.cpu()))
+    image_data = get_real_image(224, 224)
+    input_tensor = get_input_tensor_name()
+    module.set_input(input_tensor, image_data)
+    module.run()
+    return module.get_output(0).asnumpy()
 
-# Convert id to class name and show the result
-print("The image prediction result is: id " + str(prediction) + " name: " + labels[prediction])
+
+def get_labels():
+    label_file_url = "".join(
+        [
+            "https://raw.githubusercontent.com/",
+            "tensorflow/tensorflow/master/tensorflow/lite/java/demo/",
+            "app/src/main/assets/",
+            "labels_mobilenet_quant_v1_224.txt",
+        ]
+    )
+    label_file = "labels_mobilenet_quant_v1_224.txt"
+    label_path = download_testdata(label_file_url, label_file, module="data")
+    # List of 1001 classes
+    with open(label_path) as f:
+        labels = f.readlines()
+    return labels
+
+
+def check_result(res):
+    labels = get_labels()
+    predictions = np.squeeze(res)
+    prediction = np.argmax(predictions)
+    # 387 is an elephant
+    tvm.testing.assert_allclose(prediction, 387, rtol=1e-5, atol=1e-5)
+
+
+def tmobilenet(lanes):
+    if skip_test():
+        return
+    model = get_mobilenet_model()
+    mod, params = compile_model_to_relay(model)
+    mod = offload(mod)
+    lib = compile_hardware(lanes)
+    opts = compiler_opts(lib)
+    res = run_model(mod, params, opts)
+    check_result(res)
+
+
+def test_mobilenet_vector_1():
+    tmobilenet(1)

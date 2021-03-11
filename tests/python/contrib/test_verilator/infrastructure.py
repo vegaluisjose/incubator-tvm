@@ -155,7 +155,7 @@ def compiler_opts(lib):
 
     Returns
     -------
-    path : Dict
+    opts : Dict
         The compiler options.
     """
     opts = {

@@ -134,7 +134,7 @@ def check_result(res):
 
 def print_counter(lanes, cycles):
     print(
-        "[mobilenet] vector-lanes:{} number of cycles:{}".format(lanes, cycles)
+        "[mobilenet] vector-lanes:{} number of cycles:{} spent in nn.bias_add".format(lanes, cycles)
     )
 
 

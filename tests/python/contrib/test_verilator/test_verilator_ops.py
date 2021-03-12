@@ -33,6 +33,21 @@ from test_verilator.infrastructure import (
 
 
 def create_module_add(shape, dtype):
+    """Create add module.
+
+    Paramters
+    ---------
+    shape : Tuple
+        The shape tuple.
+
+    dtype : Str
+        The data type.
+
+    Returns
+    -------
+    mod: Module
+        The relay module.
+    """
     x = relay.var("x", shape=shape, dtype=dtype)
     y = relay.var("y", shape=shape, dtype=dtype)
     z = relay.add(x, y)
@@ -43,6 +58,24 @@ def create_module_add(shape, dtype):
 
 
 def create_module_bias_add(xshape, yshape, dtype):
+    """Create bias_add module.
+
+    Paramters
+    ---------
+    xshape : Tuple
+        The x shape tuple.
+
+    yshape : Tuple
+        The y shape tuple.
+
+    dtype : Str
+        The data type.
+
+    Returns
+    -------
+    mod: Module
+        The relay module.
+    """
     x = relay.var("x", shape=xshape, dtype=dtype)
     y = relay.var("y", shape=yshape, dtype=dtype)
     z = relay.nn.bias_add(x, y, axis=3)
@@ -53,6 +86,30 @@ def create_module_bias_add(xshape, yshape, dtype):
 
 
 def run_and_check(xshape, yshape, dtype, mod, opts):
+    """Run and check values.
+
+    Paramters
+    ---------
+    xshape : Tuple
+        The x shape tuple.
+
+    yshape : Tuple
+        The y shape tuple.
+
+    dtype : Str
+        The data type.
+
+    mod: Module
+        The relay module.
+
+    opts: Dict
+        The compiler options.
+
+    Returns
+    -------
+    cycles: Int
+        The number of cycles.
+    """
     x_data = np.random.randint(5, size=xshape, dtype=dtype)
     y_data = np.random.randint(5, size=yshape, dtype=dtype)
     ref = x_data + y_data
@@ -64,7 +121,20 @@ def run_and_check(xshape, yshape, dtype, mod, opts):
     return values["cycle_counter"]
 
 
-def print_counter(test, lanes, cycles):
+def print_test_info(test, lanes, cycles):
+    """Print counter
+
+    Paramters
+    ---------
+    test : Str
+        The name of the test.
+
+    lanes : Int
+        The number of vector lanes.
+
+    cycles : Int
+        The number of cycles.
+    """
     print(
         "test:{} vector-lanes:{} number of cycles:{}".format(
             test, lanes, cycles
@@ -73,6 +143,13 @@ def print_counter(test, lanes, cycles):
 
 
 def tadd(lanes):
+    """Print counter
+
+    Paramters
+    ---------
+    lanes : Int
+        The number of vector lanes.
+    """
     if skip_test():
         return
     dtype = "int32"
@@ -82,10 +159,17 @@ def tadd(lanes):
     lib = compile_hardware(lanes)
     opts = compiler_opts(lib)
     cycles = run_and_check(shape, shape, dtype, mod, opts)
-    print_counter("add", lanes, cycles)
+    print_test_info("add", lanes, cycles)
 
 
 def tbias(lanes):
+    """Print counter
+
+    Paramters
+    ---------
+    lanes : Int
+        The number of vector lanes.
+    """
     if skip_test():
         return
     dtype = "int32"
@@ -96,14 +180,16 @@ def tbias(lanes):
     lib = compile_hardware(lanes)
     opts = compiler_opts(lib)
     cycles = run_and_check(xshape, yshape, dtype, mod, opts)
-    print_counter("nn.bias_add", lanes, cycles)
+    print_test_info("nn.bias_add", lanes, cycles)
 
 
 def test_add():
+    """add tests."""
     tadd(1)
     tadd(4)
 
 
 def test_bias_add():
+    """bias_add tests."""
     tbias(1)
     tbias(32)

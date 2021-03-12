@@ -35,6 +35,13 @@ from test_verilator.infrastructure import (
 
 
 def extract(path):
+    """Extract a tgz or gz file.
+
+    Paramters
+    ---------
+    path : Str
+        The path of the compressed file.
+    """
     import tarfile
 
     if path.endswith("tgz") or path.endswith("gz"):
@@ -47,6 +54,21 @@ def extract(path):
 
 
 def get_real_image(im_height, im_width):
+    """Get a real image.
+
+    Paramters
+    ---------
+    im_height : Int
+        The image height.
+
+    im_width : Int
+        The image width.
+
+    Returns
+    -------
+    data: Data
+        The image array.
+    """
     repo_base = "https://github.com/dmlc/web-data/raw/master/tensorflow/models/InceptionV1/"
     img_name = "elephant-299.jpg"
     image_url = os.path.join(repo_base, img_name)
@@ -58,6 +80,7 @@ def get_real_image(im_height, im_width):
 
 
 def get_mobilenet_model():
+    """Return mobilenet model."""
     model_url = "https://storage.googleapis.com/download.tensorflow.org/models/mobilenet_v1_2018_08_02/mobilenet_v1_1.0_224_quant.tgz"
     model_path = download_testdata(
         model_url, "mobilenet_v1_1.0_224_quant.tgz", module=["tf", "official"]
@@ -79,10 +102,26 @@ def get_mobilenet_model():
 
 
 def get_input_tensor_name():
+    """Return input name."""
     return "input"
 
 
 def compile_model_to_relay(model):
+    """Compile model to relay.
+
+    Paramters
+    ---------
+    model : Model
+        The input model.
+
+    Returns
+    -------
+    mod: Module
+        The relay module.
+
+    params: Parameters
+        The model parameters.
+    """
     input_tensor = get_input_tensor_name()
     input_shape = (1, 224, 224, 3)
     input_dtype = "uint8"
@@ -95,6 +134,24 @@ def compile_model_to_relay(model):
 
 
 def run_model(mod, params=None, opts=None):
+    """Run model.
+
+    Paramters
+    ---------
+    mod: Module
+        The relay module.
+
+    params: Parameters
+        The model parameters.
+
+    opts: Dict
+        The compiler options.
+
+    Returns
+    -------
+    out: Data
+        The output data.
+    """
     with transform.PassContext(
         opt_level=3, config={"relay.ext.verilator.options": opts}
     ):
@@ -104,10 +161,12 @@ def run_model(mod, params=None, opts=None):
     input_tensor = get_input_tensor_name()
     module.set_input(input_tensor, image_data)
     module.run()
-    return module.get_output(0).asnumpy()
+    out = module.get_output(0).asnumpy()
+    return out
 
 
 def get_labels():
+    """Return labels."""
     label_file_url = "".join(
         [
             "https://raw.githubusercontent.com/",
@@ -125,6 +184,7 @@ def get_labels():
 
 
 def check_result(res):
+    """Check prediction against labels."""
     labels = get_labels()
     predictions = np.squeeze(res)
     prediction = np.argmax(predictions)
@@ -132,13 +192,31 @@ def check_result(res):
     tvm.testing.assert_allclose(prediction, 387, rtol=1e-5, atol=1e-5)
 
 
-def print_counter(lanes, cycles):
+def print_test_info(lanes, cycles):
+    """Print test info
+
+    Paramters
+    ---------
+    lanes : Int
+        The number of vector lanes.
+
+    cycles : Int
+        The number of cycles.
+    """
     print(
-        "[mobilenet] vector-lanes:{} number of cycles:{} spent in nn.bias_add".format(lanes, cycles)
+        "[mobilenet] vector-lanes:{} number of cycles:{} spent in nn.bias_add".format(
+            lanes, cycles
+        )
     )
 
 
 def tmobilenet(lanes):
+    """Mobilenet test template.
+    Paramters
+    ---------
+    lanes : Int
+        The number of vector lanes.
+    """
     if skip_test():
         return
     model = get_mobilenet_model()
@@ -150,9 +228,10 @@ def tmobilenet(lanes):
     res = run_model(mod, params, opts)
     values = stats()
     check_result(res)
-    print_counter(lanes, values["cycle_counter"])
+    print_test_info(lanes, values["cycle_counter"])
 
 
 def test_mobilenet():
+    """Mobilenet tests."""
     tmobilenet(4)
     tmobilenet(32)
